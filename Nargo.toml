@@ -1,7 +1,2 @@
-[package]
-name = "chacha20"
-type = "lib"
-authors = [""]
-compiler_version = "0.10.5"
-
-[dependencies]
+[workspace]
+members = ["crates/chacha20", "crates/chacha20_example"]

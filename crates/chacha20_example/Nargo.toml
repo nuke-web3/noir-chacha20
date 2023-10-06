@@ -1,0 +1,8 @@
+[package]
+name = "chacha20_example"
+type = "bin"
+authors = ["Sleepingshell"]
+compiler_version = "0.10.5"
+
+[dependencies]
+chacha20 = { path = "../chacha20" }
