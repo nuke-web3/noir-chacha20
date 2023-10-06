@@ -117,6 +117,7 @@ impl ChaCha {
     }
 }
 
+// The test data of this function is from section 2.2.1 of RFC7539
 #[test]
 fn test_quarter_round() {
     let mut a = 0x11111111 as u32;
@@ -132,6 +133,7 @@ fn test_quarter_round() {
     assert(d == 0x5881c4bb);
 }
 
+// The test data of this function is from section 2.3.2 of RFC7539
 #[test]
 fn test_block_function() {
     let mut key = [0 as u32; 8];
