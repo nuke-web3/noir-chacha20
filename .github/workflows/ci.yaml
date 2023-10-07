@@ -2,8 +2,9 @@ name: Run tests on commit
 on:
   push:
     branches: ['main']
-    paths:
-      - 'crates/**/*'
+    #paths:
+      #- 'crates/**/*'
+      
 jobs:
   test:
     runs-on: ubuntu-latest
