@@ -1,22 +1,12 @@
-struct ChaCha {
-    state: [u32; 16]
-}
-
-/// Performs bitwise rotation. NOT safe for n > 32
-fn left_rotation(x: &mut u32, n: u32) {
-    *x = ( (*x << n) | (*x >> (32-n)) );
-}
-
-fn quarter_round(a: &mut u32, b: &mut u32, c: &mut u32, d: &mut u32) {
-    *a += *b; *d ^= *a; left_rotation(d, 16);
-    *c += *d; *b ^= *c; left_rotation(b, 12);
-    *a += *b; *d ^= *a; left_rotation(d, 8);
-    *c += *d; *b ^= *c; left_rotation(b, 7);
-}
-
+/// Runs a 64-byte block of chacha20. 
+/// A new working state is instantiated with the key, nonce and counter.
+/// Then run the `inner_block` function 10 times on the working state.
+/// After the 10 rounds, the working state is added to the original state
+/// 
+/// Return: the serialized bytes of the working state (64 bytes)
 fn chacha20_block(key: [u32; 8], nonce: [u32; 3], counter: u32) -> [u8; 64] {
-    let mut state = ChaCha::new(key, nonce, counter);
-    let mut working_state = state.clone();
+    let mut state = ChaChaState::new(key, nonce, counter);
+    let mut working_state = ChaChaState::new(key, nonce, counter);
 
     for _i in 0..10 {
         working_state.inner_block();
@@ -26,7 +16,13 @@ fn chacha20_block(key: [u32; 8], nonce: [u32; 3], counter: u32) -> [u8; 64] {
     state.to_le_bytes()
 }
 
-impl ChaCha {
+/// Structure that holds the chacha20 state
+struct ChaChaState {
+    state: [u32; 16]
+}
+
+impl ChaChaState {
+    /// Instantiate a new chacha20 state with the require parameters
     fn new(key: [u32; 8], nonce: [u32; 3], counter: u32) -> Self {
         Self {
             state: [
@@ -41,6 +37,7 @@ impl ChaCha {
         }
     }
 
+    /// Return a copy of self
     fn clone(self) -> Self {
         let mut res = Self { state: [0; 16] };
         for i in 0..16 {
@@ -50,12 +47,14 @@ impl ChaCha {
         res
     }
 
+    /// Add two ChaChaState's together elementwise
     fn add(&mut self, other: Self) {
         for i in 0..16 {
             self.state[i] += other.state[i];
         }
     }
 
+    /// Serializes the 16 4-byte word working state to 64 bytes (`u8`) 
     fn to_le_bytes(self) -> [u8; 64] {
         let mut res = [0; 64];
         for i in 0..16 {
@@ -68,6 +67,15 @@ impl ChaCha {
         res
     }
 
+    /// Runs quarter round on the working state 8 times:
+    /// 0 4 8 12
+    /// 1 5 9 13
+    /// 2 6 10 14
+    /// 3 7 11 15
+    /// 0 5 10 15
+    /// 1 6 11 12
+    /// 2 7 8 13
+    /// 3 4 9 14
     fn inner_block(&mut self) {
         let mut state_0 = self.state[0];
         let mut state_1 = self.state[1];
@@ -113,6 +121,19 @@ impl ChaCha {
         self.state[15] = state_15;
     
     }
+}
+
+/// Performs a quarter round of chacha20 on 4 32-byte values.
+fn quarter_round(a: &mut u32, b: &mut u32, c: &mut u32, d: &mut u32) {
+    *a += *b; *d ^= *a; left_rotation(d, 16);
+    *c += *d; *b ^= *c; left_rotation(b, 12);
+    *a += *b; *d ^= *a; left_rotation(d, 8);
+    *c += *d; *b ^= *c; left_rotation(b, 7);
+}
+
+/// Performs bitwise rotation. NOT safe for n > 32
+fn left_rotation(x: &mut u32, n: u32) {
+    *x = ( (*x << n) | (*x >> (32-n)) );
 }
 
 // The test data of this function is from section 2.2.1 of RFC7539

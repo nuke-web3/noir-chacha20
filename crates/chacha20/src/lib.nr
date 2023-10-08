@@ -2,6 +2,9 @@ use dep::std;
 
 mod block;
 
+/// Encrypts an arbitrary sized message by running chacha20.
+/// The stream cipher of ChaCha20 is composed of running the block_function with an increasing counter,
+/// which provides 64-bytes of keystream at a time.
 fn ChaCha20<N>(key: [u32; 8], nonce: [u32; 3], counter: u32, plaintext: [u8; N]) -> [u8; N] {
     let mut res = [0; N];
     for j in 0..(N as u32/64) {
