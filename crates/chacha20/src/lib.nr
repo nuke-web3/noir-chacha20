@@ -1,5 +1,3 @@
-use dep::std;
-
 mod block;
 
 /// Encrypts an arbitrary sized message by running chacha20.
@@ -19,8 +17,6 @@ fn ChaCha20<N>(key: [u32; 8], nonce: [u32; 3], counter: u32, plaintext: [u32; N]
         let key_stream = block::chacha20_block(key, nonce, counter+j as u32);
         for t in 0..((N as u32 % 16) as Field) {
             res[16*j + t] = plaintext[16 * j + t] ^ key_stream[t];
-            std::println("L");
-            std::println(t);
         }
     }
 
@@ -69,8 +65,6 @@ fn test_ChaCha20() {
 
     for i in 0..plaintext.len() {
         assert(ciphertext[i] == expected_ciphertext[i]);
-        std::println(ciphertext[i]);
-        std::println(expected_ciphertext[i]);
     }
 
     for i in 0..plaintext.len() {
