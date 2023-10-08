@@ -4,7 +4,7 @@
 /// After the 10 rounds, the working state is added to the original state
 /// 
 /// Return: the serialized bytes of the working state (64 bytes)
-fn chacha20_block(key: [u32; 8], nonce: [u32; 3], counter: u32) -> [u8; 64] {
+fn chacha20_block(key: [u32; 8], nonce: [u32; 3], counter: u32) -> [u32; 16] {
     let mut state = ChaChaState::new(key, nonce, counter);
     let mut working_state = ChaChaState::new(key, nonce, counter);
 
@@ -13,7 +13,7 @@ fn chacha20_block(key: [u32; 8], nonce: [u32; 3], counter: u32) -> [u8; 64] {
     }
 
     state.add(working_state);
-    state.to_le_bytes()
+    state.to_le_4bytes()
 }
 
 /// Structure that holds the chacha20 state
@@ -62,6 +62,16 @@ impl ChaChaState {
             res[i*4 + 1] = ((self.state[i] & 0xFF00) >> 8) as u8;
             res[i*4 + 2] = ((self.state[i] & 0xFF0000) >> 16) as u8;
             res[i*4 + 3] = ((self.state[i] & 0xFF000000) >> 24) as u8;
+        }
+
+        res
+    }
+
+    /// Serializes the state as 4-byte little endian words
+    fn to_le_4bytes(self) -> [u32; 16] {
+        let mut res = [0; 16];
+        for i in 0..16 {
+            res[i] = (self.state[i] & 0xFF) << 24 | (self.state[i] & 0xFF00) << 8 | (self.state[i] & 0xFF0000) >> 8 | (self.state[i] & 0xFF000000) >> 24;
         }
 
         res
@@ -169,13 +179,13 @@ fn test_block_function() {
     let result = chacha20_block(key, nonce, counter);
 
     let expected_result = [
-        0x10, 0xf1, 0xe7, 0xe4, 0xd1, 0x3b, 0x59, 0x15, 0x50, 0x0f, 0xdd, 0x1f, 0xa3, 0x20, 0x71, 0xc4,
-        0xc7, 0xd1, 0xf4, 0xc7, 0x33, 0xc0, 0x68, 0x03, 0x04, 0x22, 0xaa, 0x9a, 0xc3, 0xd4, 0x6c, 0x4e,
-        0xd2, 0x82, 0x64, 0x46, 0x07, 0x9f, 0xaa, 0x09, 0x14, 0xc2, 0xd7, 0x05, 0xd9, 0x8b, 0x02, 0xa2,
-        0xb5, 0x12, 0x9c, 0xd1, 0xde, 0x16, 0x4e, 0xb9, 0xcb, 0xd0, 0x83, 0xe8, 0xa2, 0x50, 0x3c, 0x4e
+        0x10f1e7e4, 0xd13b5915, 0x500fdd1f, 0xa32071c4,
+        0xc7d1f4c7, 0x33c06803, 0x0422aa9a, 0xc3d46c4e,
+        0xd2826446, 0x079faa09, 0x14c2d705, 0xd98b02a2,
+        0xb5129cd1, 0xde164eb9, 0xcbd083e8, 0xa2503c4e
     ];
 
-    for i in 0..64 {
+    for i in 0..16 {
         assert(result[i] == expected_result[i]);
     }
 }
