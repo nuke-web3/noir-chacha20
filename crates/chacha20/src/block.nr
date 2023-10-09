@@ -71,7 +71,10 @@ impl ChaChaState {
     fn to_le_4bytes(self) -> [u32; 16] {
         let mut res = [0; 16];
         for i in 0..16 {
-            res[i] = (self.state[i] & 0xFF) << 24 | (self.state[i] & 0xFF00) << 8 | (self.state[i] & 0xFF0000) >> 8 | (self.state[i] & 0xFF000000) >> 24;
+            res[i] = ((self.state[i] & 0xFF) << 24)
+                + ((self.state[i] & 0xFF00) << 8)
+                + ((self.state[i] & 0xFF0000) >> 8)
+                + ((self.state[i] & 0xFF000000) >> 24);
         }
 
         res
