@@ -143,7 +143,7 @@ fn quarter_round(a: &mut u32, b: &mut u32, c: &mut u32, d: &mut u32) {
 
 /// Performs bitwise rotation. NOT safe for n > 32
 fn left_rotation(x: &mut u32, n: u32) {
-    *x = ( (*x << n) | (*x >> (32-n)) );
+    *x = ( (*x << n) + (*x >> (32-n)) );
 }
 
 // The test data of this function is from section 2.2.1 of RFC7539

@@ -8,6 +8,6 @@ The `crates/chacha20_example` provides a small binary implementation to measure 
 +------------------+------------------------+--------------+----------------------+
 | Package          | Language               | ACIR Opcodes | Backend Circuit Size |
 +------------------+------------------------+--------------+----------------------+
-| chacha20_example | PLONKCSat { width: 3 } | 23969        | 88105                |
+| chacha20_example | PLONKCSat { width: 3 } | 23969        | 67641                |
 +------------------+------------------------+--------------+----------------------+
 ```
