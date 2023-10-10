@@ -16,3 +16,5 @@ The `crates/chacha20_example` provides a small binary implementation to measure 
 | chacha20_example | PLONKCSat { width: 3 } | 23969        | 34201               |
 +------------------+------------------------+--------------+----------------------+
 ```
+
+On a Ryzen 7 7700X, proving a single 32-byte message encryption took `42s`.
