@@ -3,7 +3,7 @@
 
 This is a Noir implementation of ChaCha20 as defined by [RFC7539](https://www.rfc-editor.org/rfc/rfc7539).
 > [!IMPORTANT]
-> This impelementation works on 4-byte words, as opposed to the RFC working with 1-byte words.
+> This implementation works on 4-byte words, as opposed to the RFC working with 1-byte words.
 
 Due to the above, the tests provided are adopted to 4-byte words
 
