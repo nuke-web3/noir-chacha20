@@ -46,7 +46,7 @@ impl ChaChaState {
     /// Add two ChaChaState's together elementwise
     fn add(&mut self, other: Self) {
         for i in 0..16 {
-            self.state[i] += other.state[i];
+            self.state[i] = std::wrapping_add(self.state[i], other.state[i]);
         }
     }
 
@@ -67,12 +67,24 @@ impl ChaChaState {
     fn to_le_4bytes(self) -> [u32; 16] {
         let mut res = [0; 16];
         for i in 0..16 {
-            res[i] = ((self.state[i] & 0xFF) << 24)
-                + ((self.state[i] & 0xFF00) << 8)
-                + ((self.state[i] & 0xFF0000) >> 8)
-                + ((self.state[i] & 0xFF000000) >> 24);
-        }
+            let val = self.state[i];
 
+            let byte0 = val & 0xFF;
+            let byte1 = (val >> 8) & 0xFF;
+            let byte2 = (val >> 16) & 0xFF;
+            let byte3 = (val >> 24) & 0xFF;
+
+            let part1 = byte0 << 24;
+            let part2 = byte1 << 16;
+            let part3 = byte2 << 8;
+            let part4 = byte3;
+
+            let sum1 = std::wrapping_add(part1, part2);
+            let sum2 = std::wrapping_add(sum1, part3);
+            let sum3 = std::wrapping_add(sum2, part4);
+
+            res[i] = sum3;
+        }
         res
     }
 
@@ -150,17 +162,16 @@ fn quarter_round(a: &mut u32, b: &mut u32, c: &mut u32, d: &mut u32) {
     left_rotation(b, 7);
 }
 
-
 /// Performs bitwise rotation.
 ///
 /// ### SAFETY
 ///
 /// You *must* guarantee that `n <= 32` at runtime!
 /// `32 - n` could underflow!
-/// 
+///
 /// Consider using `assert(n < 32);`
 fn left_rotation(x: &mut u32, n: u8) {
-    *x = ((*x << n ) + (*x >> (32 - n) ));
+    *x = ((*x << n) + (*x >> (32 - n)));
 }
 
 // The test data of this function is from section 2.2.1 of RFC7539
