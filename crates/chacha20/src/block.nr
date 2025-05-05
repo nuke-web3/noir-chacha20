@@ -1,10 +1,10 @@
-/// Runs a 64-byte block of chacha20. 
+/// Runs a 64-byte block of chacha20.
 /// A new working state is instantiated with the key, nonce and counter.
 /// Then run the `inner_block` function 10 times on the working state.
 /// After the 10 rounds, the working state is added to the original state
-/// 
+///
 /// Return: the serialized bytes of the working state (64 bytes)
-fn chacha20_block(key: [u32; 8], nonce: [u32; 3], counter: u32) -> [u32; 16] {
+pub fn chacha20_block(key: [u32; 8], nonce: [u32; 3], counter: u32) -> [u32; 16] {
     let mut state = ChaChaState::new(key, nonce, counter);
     let mut working_state = ChaChaState::new(key, nonce, counter);
 
@@ -18,7 +18,7 @@ fn chacha20_block(key: [u32; 8], nonce: [u32; 3], counter: u32) -> [u32; 16] {
 
 /// Structure that holds the chacha20 state
 struct ChaChaState {
-    state: [u32; 16]
+    state: [u32; 16],
 }
 
 impl ChaChaState {
@@ -27,13 +27,9 @@ impl ChaChaState {
         Self {
             state: [
                 0x61707865, 0x3320646e, 0x79622d32, 0x6b206574, // Constants
-                key[0], key[1],
-                key[2], key[3],
-                key[4], key[5],
-                key[6], key[7],
-                counter, nonce[0],
-                nonce[1], nonce[2]
-            ]
+                key[0], key[1], key[2], key[3], key[4], key[5], key[6], key[7], counter, nonce[0],
+                nonce[1], nonce[2],
+            ],
         }
     }
 
@@ -50,18 +46,18 @@ impl ChaChaState {
     /// Add two ChaChaState's together elementwise
     fn add(&mut self, other: Self) {
         for i in 0..16 {
-            self.state[i] += other.state[i];
+            self.state[i] = std::wrapping_add(self.state[i], other.state[i]);
         }
     }
 
-    /// Serializes the 16 4-byte word working state to 64 bytes (`u8`) 
+    /// Serializes the 16 4-byte word working state to 64 bytes (`u8`)
     fn to_le_bytes(self) -> [u8; 64] {
         let mut res = [0; 64];
         for i in 0..16 {
-            res[i*4] = (self.state[i] & 0xFF) as u8;
-            res[i*4 + 1] = ((self.state[i] & 0xFF00) >> 8) as u8;
-            res[i*4 + 2] = ((self.state[i] & 0xFF0000) >> 16) as u8;
-            res[i*4 + 3] = ((self.state[i] & 0xFF000000) >> 24) as u8;
+            res[i * 4] = (self.state[i] & 0xFF) as u8;
+            res[i * 4 + 1] = ((self.state[i] & 0xFF00) >> 8) as u8;
+            res[i * 4 + 2] = ((self.state[i] & 0xFF0000) >> 16) as u8;
+            res[i * 4 + 3] = ((self.state[i] & 0xFF000000) >> 24) as u8;
         }
 
         res
@@ -71,12 +67,24 @@ impl ChaChaState {
     fn to_le_4bytes(self) -> [u32; 16] {
         let mut res = [0; 16];
         for i in 0..16 {
-            res[i] = ((self.state[i] & 0xFF) << 24)
-                + ((self.state[i] & 0xFF00) << 8)
-                + ((self.state[i] & 0xFF0000) >> 8)
-                + ((self.state[i] & 0xFF000000) >> 24);
-        }
+            let val = self.state[i];
 
+            let byte0 = val & 0xFF;
+            let byte1 = (val >> 8) & 0xFF;
+            let byte2 = (val >> 16) & 0xFF;
+            let byte3 = (val >> 24) & 0xFF;
+
+            let part1 = byte0 << 24;
+            let part2 = byte1 << 16;
+            let part3 = byte2 << 8;
+            let part4 = byte3;
+
+            let sum1 = std::wrapping_add(part1, part2);
+            let sum2 = std::wrapping_add(sum1, part3);
+            let sum3 = std::wrapping_add(sum2, part4);
+
+            res[i] = sum3;
+        }
         res
     }
 
@@ -132,21 +140,38 @@ impl ChaChaState {
         self.state[13] = state_13;
         self.state[14] = state_14;
         self.state[15] = state_15;
-    
     }
 }
 
 /// Performs a quarter round of chacha20 on 4 32-byte values.
 fn quarter_round(a: &mut u32, b: &mut u32, c: &mut u32, d: &mut u32) {
-    *a += *b; *d ^= *a; left_rotation(d, 16);
-    *c += *d; *b ^= *c; left_rotation(b, 12);
-    *a += *b; *d ^= *a; left_rotation(d, 8);
-    *c += *d; *b ^= *c; left_rotation(b, 7);
+    *a = std::wrapping_add(*a, *b);
+    *d ^= *a;
+    left_rotation(d, 16);
+
+    *c = std::wrapping_add(*c, *d);
+    *b ^= *c;
+    left_rotation(b, 12);
+
+    *a = std::wrapping_add(*a, *b);
+    *d ^= *a;
+    left_rotation(d, 8);
+
+    *c = std::wrapping_add(*c, *d);
+    *b ^= *c;
+    left_rotation(b, 7);
 }
 
-/// Performs bitwise rotation. NOT safe for n > 32
-fn left_rotation(x: &mut u32, n: u32) {
-    *x = ( (*x << n) + (*x >> (32-n)) );
+/// Performs bitwise rotation.
+///
+/// ### SAFETY
+///
+/// You *must* guarantee that `n <= 32` at runtime!
+/// `32 - n` could underflow!
+///
+/// Consider using `assert(n < 32);`
+fn left_rotation(x: &mut u32, n: u8) {
+    *x = ((*x << n) + (*x >> (32 - n)));
 }
 
 // The test data of this function is from section 2.2.1 of RFC7539
@@ -170,7 +195,7 @@ fn test_quarter_round() {
 fn test_block_function() {
     let mut key = [0 as u32; 8];
     for i in 0..8 {
-        key[i] = (4*i | (4*i + 1) << 8 | (4*i + 2) << 16 | (4*i + 3) << 24);
+        key[i] = (4 * i | (4 * i + 1) << 8 | (4 * i + 2) << 16 | (4 * i + 3) << 24);
     }
 
     let mut nonce = [0; 3];
@@ -182,10 +207,9 @@ fn test_block_function() {
     let result = chacha20_block(key, nonce, counter);
 
     let expected_result = [
-        0x10f1e7e4, 0xd13b5915, 0x500fdd1f, 0xa32071c4,
-        0xc7d1f4c7, 0x33c06803, 0x0422aa9a, 0xc3d46c4e,
-        0xd2826446, 0x079faa09, 0x14c2d705, 0xd98b02a2,
-        0xb5129cd1, 0xde164eb9, 0xcbd083e8, 0xa2503c4e
+        0x10f1e7e4, 0xd13b5915, 0x500fdd1f, 0xa32071c4, 0xc7d1f4c7, 0x33c06803, 0x0422aa9a,
+        0xc3d46c4e, 0xd2826446, 0x079faa09, 0x14c2d705, 0xd98b02a2, 0xb5129cd1, 0xde164eb9,
+        0xcbd083e8, 0xa2503c4e,
     ];
 
     for i in 0..16 {
