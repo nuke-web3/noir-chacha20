@@ -10,17 +10,19 @@ pub fn ChaCha20<let N: u32>(
     plaintext: [u32; N],
 ) -> [u32; N] {
     let mut res = [0; N];
-    for j in 0..N {
+    for j in 0..N / 16 {
         let key_stream = block::chacha20_block(key, nonce, counter + j);
         for t in 0..16 {
             res[16 * j + t] = plaintext[16 * j + t] ^ key_stream[t];
         }
     }
 
-    let j = N;
-    let key_stream = block::chacha20_block(key, nonce, counter + j);
-    for t in 0..N {
-        res[16 * j + t] = plaintext[16 * j + t] ^ key_stream[t];
+    if (N % 16 != 0) {
+        let j = N / 16;
+        let key_stream = block::chacha20_block(key, nonce, counter + j);
+        for t in 0..N % 16 {
+            res[16 * j + t] = plaintext[16 * j + t] ^ key_stream[t];
+        }
     }
 
     res
