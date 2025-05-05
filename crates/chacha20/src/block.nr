@@ -133,19 +133,23 @@ impl ChaChaState {
 
 /// Performs a quarter round of chacha20 on 4 32-byte values.
 fn quarter_round(a: &mut u32, b: &mut u32, c: &mut u32, d: &mut u32) {
-    *a += *b;
+    *a = std::wrapping_add(*a, *b);
     *d ^= *a;
     left_rotation(d, 16);
-    *c += *d;
+
+    *c = std::wrapping_add(*c, *d);
     *b ^= *c;
     left_rotation(b, 12);
-    *a += *b;
+
+    *a = std::wrapping_add(*a, *b);
     *d ^= *a;
     left_rotation(d, 8);
-    *c += *d;
+
+    *c = std::wrapping_add(*c, *d);
     *b ^= *c;
     left_rotation(b, 7);
 }
+
 
 /// Performs bitwise rotation.
 ///
