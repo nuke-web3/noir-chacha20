@@ -1,27 +1,49 @@
 mod block;
 
-/// Encrypts an arbitrary sized message by running chacha20.
+/// Encrypts an arbitrary sized message by running ChaCha20.
 /// The stream cipher of ChaCha20 is composed of running the block_function with an increasing counter,
 /// which provides 64-bytes of keystream at a time.
-pub fn ChaCha20<let N: u32>(
-    key: [u32; 8],
-    nonce: [u32; 3],
+pub fn chacha20<let N: u32>(
+    key: [u8; 32],
+    nonce: [u8; 12],
     counter: u32,
-    plaintext: [u32; N],
-) -> [u32; N] {
-    let mut res = [0; N];
-    for j in 0..N / 16 {
-        let key_stream = block::chacha20_block(key, nonce, counter + j);
-        for t in 0..16 {
-            res[16 * j + t] = plaintext[16 * j + t] ^ key_stream[t];
+    plaintext: [u8; N],
+) -> [u8; N] {
+    let mut res = [0 as u8; N];
+
+    // Convert key to little-endian
+    let mut key_u32 = [0 as u32; 8];
+    for i in 0..8 {
+        key_u32[i] =
+            u32::from_le_bytes([key[i * 4], key[i * 4 + 1], key[i * 4 + 2], key[i * 4 + 3]]) as u32;
+    }
+
+    // Convert nonce to little-endian
+    let mut nonce_u32 = [0 as u32; 3];
+    for i in 0..3 {
+        nonce_u32[i] = u32::from_le_bytes(
+            [nonce[i * 4], nonce[i * 4 + 1], nonce[i * 4 + 2], nonce[i * 4 + 3]],
+        ) as u32;
+    }
+
+    // Process full 16-byte blocks
+    let num_blocks = N / 64;
+    let remaining = N % 64;
+
+    for j in 0..num_blocks {
+        let key_stream = block::chacha20_block(key_u32, nonce_u32, counter + j as u32);
+        for i in 0..64 {
+            res[j * 64 + i] =
+                plaintext[j * 64 + i] ^ u32::to_le_bytes(key_stream[i / 4] as Field)[i % 4];
         }
     }
 
-    if (N % 16 != 0) {
-        let j = N / 16;
-        let key_stream = block::chacha20_block(key, nonce, counter + j);
-        for t in 0..N % 16 {
-            res[16 * j + t] = plaintext[16 * j + t] ^ key_stream[t];
+    // Process remaining bytes
+    if remaining != 0 {
+        let key_stream = block::chacha20_block(key_u32, nonce_u32, counter + num_blocks as u32);
+        for i in 0..remaining {
+            res[num_blocks * 64 + i] = plaintext[num_blocks * 64 + i]
+                ^ u32::to_le_bytes(key_stream[i / 4] as Field)[i % 4];
         }
     }
 
@@ -31,7 +53,7 @@ pub fn ChaCha20<let N: u32>(
 /// The test data of this function is from section 2.4.2 of RFC7539, except that it pads 2 extra 0 bytes
 /// since, for now, the function operations on 4-byte words
 #[test]
-fn test_ChaCha20() {
+fn test_chacha20() {
     let mut key = [0; 8];
     for i in 0..8 {
         key[i] = (4 * i | (4 * i + 1) << 8 | (4 * i + 2) << 16 | (4 * i + 3) << 24);
@@ -50,7 +72,7 @@ fn test_ChaCha20() {
         0x742e0000,
     ];
 
-    let ciphertext = ChaCha20(key, nonce, counter, plaintext);
+    let ciphertext = chacha20(key, nonce, counter, plaintext);
 
     let expected_ciphertext = [
         0x6e2e359a, 0x2568f980, 0x41ba0728, 0xdd0d6981, 0xe97e7aec, 0x1d4360c2, 0x0a27afcc,
@@ -60,7 +82,7 @@ fn test_ChaCha20() {
         0x874d7403,
     ];
 
-    let decrypted_plaintext = ChaCha20(key, nonce, counter, ciphertext);
+    let decrypted_plaintext = chacha20(key, nonce, counter, ciphertext);
 
     for i in 0..plaintext.len() {
         assert(ciphertext[i] == expected_ciphertext[i]);
