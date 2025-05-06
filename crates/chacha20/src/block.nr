@@ -212,7 +212,5 @@ fn test_block_function() {
         0xcbd083e8, 0xa2503c4e,
     ];
 
-    for i in 0..16 {
-        assert(result[i] == expected_result[i]);
-    }
+    assert(result == expected_result, f"\n{result}\n == \n{expected_result}");
 }

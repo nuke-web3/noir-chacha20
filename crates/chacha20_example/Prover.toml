@@ -1,4 +1,4 @@
-# Sourced from https://datatracker.ietf.org/doc/html/rfc7539#section-2.4.2
+# Inputs from https://datatracker.ietf.org/doc/html/rfc7539#section-2.4.2
 counter = 0x01
 key = [
   0x00,
