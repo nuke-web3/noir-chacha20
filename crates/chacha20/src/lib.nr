@@ -4,11 +4,19 @@ mod block;
 /// The stream cipher of ChaCha20 is composed of running the block_function with an increasing counter,
 /// which provides 64-bytes of keystream at a time.
 pub fn ChaCha20<let N: u32>(
-    key: [u32; 8],
+    key_bytes: [u8; 32],
     nonce: [u32; 3],
     counter: u32,
     plaintext: [u32; N],
 ) -> [u32; N] {
+    let mut key = [0 as u32; 8];
+    for i in 0..8 {
+        key[i] = key_bytes[i * 4] as u32
+            | ((key_bytes[i * 4 + 1] as u32) << 8)
+            | ((key_bytes[i * 4 + 2] as u32) << 16)
+            | ((key_bytes[i * 4 + 3] as u32) << 24);
+    }
+
     let mut res = [0; N];
     for j in 0..N / 16 {
         let key_stream = block::chacha20_block(key, nonce, counter + j);
@@ -32,9 +40,15 @@ pub fn ChaCha20<let N: u32>(
 /// since, for now, the function operations on 4-byte words
 #[test]
 fn test_ChaCha20() {
-    let mut key = [
-        0x03020100, 0x07060504, 0x0B0A0908, 0x0F0E0D0C, 0x13121110, 0x17161514, 0x1B1A1918,
-        0x1F1E1D1C,
+    let key= [
+        0x00, 0x01, 0x02, 0x03,
+        0x04, 0x05, 0x06, 0x07,
+        0x08, 0x09, 0x0A, 0x0B,
+        0x0C, 0x0D, 0x0E, 0x0F,
+        0x10, 0x11, 0x12, 0x13,
+        0x14, 0x15, 0x16, 0x17,
+        0x18, 0x19, 0x1A, 0x1B,
+        0x1C, 0x1D, 0x1E, 0x1F,
     ];
 
     let nonce = [0x00000000, 0x4a000000, 0x00000000];
