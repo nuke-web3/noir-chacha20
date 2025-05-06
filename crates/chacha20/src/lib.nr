@@ -32,13 +32,12 @@ pub fn ChaCha20<let N: u32>(
 /// since, for now, the function operations on 4-byte words
 #[test]
 fn test_ChaCha20() {
-    let mut key = [0; 8];
-    for i in 0..8 {
-        key[i] = (4 * i | (4 * i + 1) << 8 | (4 * i + 2) << 16 | (4 * i + 3) << 24);
-    }
+    let mut key = [
+        0x03020100, 0x07060504, 0x0B0A0908, 0x0F0E0D0C, 0x13121110, 0x17161514, 0x1B1A1918,
+        0x1F1E1D1C,
+    ];
 
-    let mut nonce = [0; 3];
-    nonce[1] = 0x4a000000;
+    let nonce = [0x00000000, 0x4a000000, 0x00000000];
 
     let counter = 1;
 
