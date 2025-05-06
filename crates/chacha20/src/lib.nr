@@ -7,8 +7,8 @@ pub fn ChaCha20<let N: u32>(
     key_bytes: [u8; 32],
     nonce_bytes: [u8; 12],
     counter: u32,
-    plaintext: [u32; N],
-) -> [u32; N] {
+    plaintext: [u8; N],
+) -> [u8; N] {
     let mut key = [0 as u32; 8];
     for i in 0..8 {
         key[i] = key_bytes[i * 4] as u32
@@ -16,6 +16,7 @@ pub fn ChaCha20<let N: u32>(
             | ((key_bytes[i * 4 + 2] as u32) << 16)
             | ((key_bytes[i * 4 + 3] as u32) << 24);
     }
+
     let mut nonce = [0 as u32; 3];
     for i in 0..3 {
         nonce[i] = nonce_bytes[i * 4] as u32
@@ -24,19 +25,35 @@ pub fn ChaCha20<let N: u32>(
             | ((nonce_bytes[i * 4 + 3] as u32) << 24);
     }
 
-    let mut res = [0; N];
-    for j in 0..N / 16 {
+    let mut res = [0 as u8; N];
+    for j in 0..N / 64 {
         let key_stream = block::chacha20_block(key, nonce, counter + j);
-        for t in 0..16 {
-            res[16 * j + t] = plaintext[16 * j + t] ^ key_stream[t];
+        let mut key_stream_bytes = [0 as u8; 64];
+        for i in 0..16 {
+            key_stream_bytes[i * 4] = (key_stream[i] & 0xff) as u8;
+            key_stream_bytes[i * 4 + 1] = ((key_stream[i] >> 8) & 0xff) as u8;
+            key_stream_bytes[i * 4 + 2] = ((key_stream[i] >> 16) & 0xff) as u8;
+            key_stream_bytes[i * 4 + 3] = ((key_stream[i] >> 24) & 0xff) as u8;
+        }
+
+        for t in 0..64 {
+            res[64 * j + t] = plaintext[64 * j + t] ^ key_stream_bytes[t];
         }
     }
 
-    if (N % 16 != 0) {
-        let j = N / 16;
+    if (N % 64 != 0) {
+        let j = N / 64;
         let key_stream = block::chacha20_block(key, nonce, counter + j);
-        for t in 0..N % 16 {
-            res[16 * j + t] = plaintext[16 * j + t] ^ key_stream[t];
+        let mut key_stream_bytes = [0 as u8; 64];
+        for i in 0..16 {
+            key_stream_bytes[i * 4] = (key_stream[i] & 0xff) as u8;
+            key_stream_bytes[i * 4 + 1] = ((key_stream[i] >> 8) & 0xff) as u8;
+            key_stream_bytes[i * 4 + 2] = ((key_stream[i] >> 16) & 0xff) as u8;
+            key_stream_bytes[i * 4 + 3] = ((key_stream[i] >> 24) & 0xff) as u8;
+        }
+
+        for t in 0..N % 64 {
+            res[64 * j + t] = plaintext[64 * j + t] ^ key_stream_bytes[t];
         }
     }
 
@@ -57,7 +74,7 @@ fn test_ChaCha20() {
 
     let counter = 1;
 
-    let plaintext = [
+    let plaintext_words = [
         0x4c616469, 0x65732061, 0x6e642047, 0x656e746c, 0x656d656e, 0x206f6620, 0x74686520,
         0x636c6173, 0x73206f66, 0x20273939, 0x3a204966, 0x20492063, 0x6f756c64, 0x206f6666,
         0x65722079, 0x6f75206f, 0x6e6c7920, 0x6f6e6520, 0x74697020, 0x666f7220, 0x74686520,
@@ -65,15 +82,18 @@ fn test_ChaCha20() {
         0x742e0000,
     ];
 
-    let ciphertext = ChaCha20(key, nonce, counter, plaintext);
-
-    let expected_ciphertext = [
+    let expected_ciphertext_words = [
         0x6e2e359a, 0x2568f980, 0x41ba0728, 0xdd0d6981, 0xe97e7aec, 0x1d4360c2, 0x0a27afcc,
         0xfd9fae0b, 0xf91b65c5, 0x524733ab, 0x8f593dab, 0xcd62b357, 0x1639d624, 0xe65152ab,
         0x8f530c35, 0x9f0861d8, 0x07ca0dbf, 0x500d6a61, 0x56a38e08, 0x8a22b65e, 0x52bc514d,
         0x16ccf806, 0x818ce91a, 0xb7793736, 0x5af90bbf, 0x74a35be6, 0xb40b8eed, 0xf2785e42,
         0x874d7403,
     ];
+
+    let plaintext = unpack_words_to_bytes(plaintext_words);
+    let expected_ciphertext = unpack_words_to_bytes(expected_ciphertext_words);
+
+    let ciphertext = ChaCha20(key, nonce, counter, plaintext);
 
     let decrypted_plaintext = ChaCha20(key, nonce, counter, ciphertext);
 
@@ -84,4 +104,16 @@ fn test_ChaCha20() {
     for i in 0..plaintext.len() {
         assert(decrypted_plaintext[i] == plaintext[i]);
     }
+}
+
+// Convert u32[] u8[] (little-endian)
+fn unpack_words_to_bytes<let N: u32>(words: [u32; N]) -> [u8; N * 4] {
+    let mut out = [0 as u8; N * 4];
+    for i in 0..words.len() {
+        out[i * 4] = (words[i] & 0xff) as u8;
+        out[i * 4 + 1] = ((words[i] >> 8) & 0xff) as u8;
+        out[i * 4 + 2] = ((words[i] >> 16) & 0xff) as u8;
+        out[i * 4 + 3] = ((words[i] >> 24) & 0xff) as u8;
+    }
+    out
 }
