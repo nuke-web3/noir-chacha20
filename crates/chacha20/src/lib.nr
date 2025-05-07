@@ -54,6 +54,7 @@ fn test_ChaCha20() {
         0x66757475, 0x72652c20, 0x73756e73, 0x63726565, 0x6e20776f, 0x756c6420, 0x62652069,
         0x742e0000,
     ];
+    let plaintext = unpack_u32_words_to_bytes(plaintext_words);
 
     let expected_ciphertext_words = [
         0x6e2e359a, 0x2568f980, 0x41ba0728, 0xdd0d6981, 0xe97e7aec, 0x1d4360c2, 0x0a27afcc,
@@ -62,21 +63,13 @@ fn test_ChaCha20() {
         0x16ccf806, 0x818ce91a, 0xb7793736, 0x5af90bbf, 0x74a35be6, 0xb40b8eed, 0xf2785e42,
         0x874d7403,
     ];
-
-    let plaintext = unpack_u32_words_to_bytes(plaintext_words);
     let expected_ciphertext = unpack_u32_words_to_bytes(expected_ciphertext_words);
 
     let ciphertext = ChaCha20(key, nonce, counter, plaintext);
+    assert(ciphertext == expected_ciphertext, f"\n{ciphertext}\n == \n{expected_ciphertext}");
 
     let decrypted_plaintext = ChaCha20(key, nonce, counter, ciphertext);
-
-    for i in 0..plaintext.len() {
-        assert(ciphertext[i] == expected_ciphertext[i]);
-    }
-
-    for i in 0..plaintext.len() {
-        assert(decrypted_plaintext[i] == plaintext[i]);
-    }
+    assert(decrypted_plaintext == plaintext, f"\n{decrypted_plaintext}\n == \n{plaintext}");
 }
 
 /// Converts a [u8] array to a [u32] array (little-endian), padding the end with 0s if needed
@@ -84,6 +77,7 @@ fn pack_bytes_to_u32_words_padded<let N: u32>(bytes: [u8; N]) -> [u32; (N + 3) /
     // NOTE: length calculation uses ceil division, so we round up if there is any remainder
     let mut padded = [0 as u8; ((N + 3) / 4) * 4];
 
+    // Copy input into padded array
     for i in 0..N {
         padded[i] = bytes[i];
     }
