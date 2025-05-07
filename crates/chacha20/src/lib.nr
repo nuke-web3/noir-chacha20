@@ -9,33 +9,13 @@ pub fn ChaCha20<let N: u32>(
     counter: u32,
     plaintext: [u8; N],
 ) -> [u8; N] {
-    let mut key = [0 as u32; 8];
-    for i in 0..8 {
-        key[i] = key_bytes[i * 4] as u32
-            | ((key_bytes[i * 4 + 1] as u32) << 8)
-            | ((key_bytes[i * 4 + 2] as u32) << 16)
-            | ((key_bytes[i * 4 + 3] as u32) << 24);
-    }
-
-    let mut nonce = [0 as u32; 3];
-    for i in 0..3 {
-        nonce[i] = nonce_bytes[i * 4] as u32
-            | ((nonce_bytes[i * 4 + 1] as u32) << 8)
-            | ((nonce_bytes[i * 4 + 2] as u32) << 16)
-            | ((nonce_bytes[i * 4 + 3] as u32) << 24);
-    }
+    let key = pack_bytes_to_u32_words_padded(key_bytes);
+    let nonce = pack_bytes_to_u32_words_padded(nonce_bytes);
 
     let mut res = [0 as u8; N];
     for j in 0..N / 64 {
         let key_stream = block::chacha20_block(key, nonce, counter + j);
-        let mut key_stream_bytes = [0 as u8; 64];
-        for i in 0..16 {
-            key_stream_bytes[i * 4] = (key_stream[i] & 0xff) as u8;
-            key_stream_bytes[i * 4 + 1] = ((key_stream[i] >> 8) & 0xff) as u8;
-            key_stream_bytes[i * 4 + 2] = ((key_stream[i] >> 16) & 0xff) as u8;
-            key_stream_bytes[i * 4 + 3] = ((key_stream[i] >> 24) & 0xff) as u8;
-        }
-
+        let key_stream_bytes = unpack_u32_words_to_bytes(key_stream);
         for t in 0..64 {
             res[64 * j + t] = plaintext[64 * j + t] ^ key_stream_bytes[t];
         }
@@ -44,14 +24,7 @@ pub fn ChaCha20<let N: u32>(
     if (N % 64 != 0) {
         let j = N / 64;
         let key_stream = block::chacha20_block(key, nonce, counter + j);
-        let mut key_stream_bytes = [0 as u8; 64];
-        for i in 0..16 {
-            key_stream_bytes[i * 4] = (key_stream[i] & 0xff) as u8;
-            key_stream_bytes[i * 4 + 1] = ((key_stream[i] >> 8) & 0xff) as u8;
-            key_stream_bytes[i * 4 + 2] = ((key_stream[i] >> 16) & 0xff) as u8;
-            key_stream_bytes[i * 4 + 3] = ((key_stream[i] >> 24) & 0xff) as u8;
-        }
-
+        let key_stream_bytes = unpack_u32_words_to_bytes(key_stream);
         for t in 0..N % 64 {
             res[64 * j + t] = plaintext[64 * j + t] ^ key_stream_bytes[t];
         }
@@ -90,8 +63,8 @@ fn test_ChaCha20() {
         0x874d7403,
     ];
 
-    let plaintext = unpack_words_to_bytes(plaintext_words);
-    let expected_ciphertext = unpack_words_to_bytes(expected_ciphertext_words);
+    let plaintext = unpack_u32_words_to_bytes(plaintext_words);
+    let expected_ciphertext = unpack_u32_words_to_bytes(expected_ciphertext_words);
 
     let ciphertext = ChaCha20(key, nonce, counter, plaintext);
 
@@ -106,10 +79,30 @@ fn test_ChaCha20() {
     }
 }
 
-// Convert u32[] u8[] (little-endian)
-fn unpack_words_to_bytes<let N: u32>(words: [u32; N]) -> [u8; N * 4] {
+/// Converts a [u8] array to a [u32] array (little-endian), padding the end with 0s if needed
+fn pack_bytes_to_u32_words_padded<let N: u32>(bytes: [u8; N]) -> [u32; (N + 3) / 4] {
+    // NOTE: length calculation uses ceil division, so we round up if there is any remainder
+    let mut padded = [0 as u8; ((N + 3) / 4) * 4];
+
+    for i in 0..N {
+        padded[i] = bytes[i];
+    }
+
+    let mut out = [0 as u32; (N + 3) / 4];
+    for i in 0..out.len() {
+        out[i] = padded[i * 4] as u32
+            | ((padded[i * 4 + 1] as u32) << 8)
+            | ((padded[i * 4 + 2] as u32) << 16)
+            | ((padded[i * 4 + 3] as u32) << 24);
+    }
+
+    out
+}
+
+/// Converts a [u32] array to a [u8] array (little-endian)
+fn unpack_u32_words_to_bytes<let N: u32>(words: [u32; N]) -> [u8; N * 4] {
     let mut out = [0 as u8; N * 4];
-    for i in 0..words.len() {
+    for i in 0..N {
         out[i * 4] = (words[i] & 0xff) as u8;
         out[i * 4 + 1] = ((words[i] >> 8) & 0xff) as u8;
         out[i * 4 + 2] = ((words[i] >> 16) & 0xff) as u8;
