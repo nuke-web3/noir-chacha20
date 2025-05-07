@@ -1,20 +1,30 @@
 ![Test workflow](https://github.com/sleepingshell/noir-chacha20/actions/workflows/ci.yaml/badge.svg)
+
 # Noir-Chacha20
 
 This is a Noir implementation of ChaCha20 as defined by [RFC7539](https://www.rfc-editor.org/rfc/rfc7539).
-> [!IMPORTANT]
-> This implementation works on 4-byte words, as opposed to the RFC working with 1-byte words.
 
-Due to the above, the tests provided are adopted to 4-byte words
+The [crates/chacha20_example](./crates/chacha20_example) provides a small binary implementation to measure circuit size.
 
-
-The `crates/chacha20_example` provides a small binary implementation to measure circuit size.
 ```
-+------------------+------------------------+--------------+----------------------+
-| Package          | Language               | ACIR Opcodes | Backend Circuit Size |
-+------------------+------------------------+--------------+----------------------+
-| chacha20_example | PLONKCSat { width: 3 } | 23969        | 34201               |
-+------------------+------------------------+--------------+----------------------+
++------------------+----------------------------+----------------------+--------------+-----------------+
+| Package          | Function                   | Expression Width     | ACIR Opcodes | Brillig Opcodes |
++------------------+----------------------------+----------------------+--------------+-----------------+
+| chacha20_example | main                       | Bounded { width: 4 } | 15930        | 17              |
++------------------+----------------------------+----------------------+--------------+-----------------+
+| chacha20_example | directive_integer_quotient | N/A                  | N/A          | 8               |
++------------------+----------------------------+----------------------+--------------+-----------------+
+| chacha20_example | directive_invert           | N/A                  | N/A          | 9               |
++------------------+----------------------------+----------------------+--------------+-----------------+
 ```
 
-On a Ryzen 7 7700X, proving a single 32-byte message encryption took `42s`.
+To time proving:
+
+```sh
+# build artifacts
+nargo execute
+# run Barretenberg prover
+time bb prove -b ./target/chacha20_example.json -w ./target/chacha20_example.gz -o ./target
+```
+
+On a [AMD Ryzen 7 1800X](https://www.techpowerup.com/cpu-specs/ryzen-7-1800x.c1879), Barretenberg proving a single 116-byte message encryption took `TODO` seconds.

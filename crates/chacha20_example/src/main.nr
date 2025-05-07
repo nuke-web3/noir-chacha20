@@ -1,5 +1,5 @@
-use dep::chacha20::ChaCha20;
+use dep::chacha20::chacha20;
 
-fn main(key: [u32; 8], nonce: [u32; 3], counter: u32, plaintext: [u32; 16]) -> pub [u32; 16] {
-    ChaCha20(key, nonce, counter, plaintext)
+fn main(key: [u8; 32], nonce: [u8; 12], counter: u32, plaintext: [u8; 112]) -> pub [u8; 112] {
+    chacha20(key, nonce, counter, plaintext)
 }
