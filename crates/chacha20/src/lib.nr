@@ -12,22 +12,37 @@ pub fn ChaCha20<let N: u32>(
     let key = pack_bytes_to_u32_words_padded(key_bytes);
     let nonce = pack_bytes_to_u32_words_padded(nonce_bytes);
 
-    let mut res = [0 as u8; N];
-    for j in 0..N / 64 {
+    let num_blocks = N / 64;
+    let remaining_bytes = N % 64;
+
+    let mut res_words = [0 as u32; ((N + 3) / 4)];
+
+    let plaintext_words = pack_bytes_to_u32_words_padded(plaintext);
+
+    for j in 0..num_blocks {
         let key_stream = block::chacha20_block(key, nonce, counter + j);
-        let key_stream_bytes = unpack_u32_words_to_bytes(key_stream);
-        for t in 0..64 {
-            res[64 * j + t] = plaintext[64 * j + t] ^ key_stream_bytes[t];
+        for w in 0..16 {
+            let idx = 16 * j + w;
+            res_words[idx] = plaintext_words[idx] ^ key_stream[w];
         }
     }
 
-    if (N % 64 != 0) {
-        let j = N / 64;
+    if remaining_bytes != 0 {
+        let j = num_blocks;
         let key_stream = block::chacha20_block(key, nonce, counter + j);
-        let key_stream_bytes = unpack_u32_words_to_bytes(key_stream);
-        for t in 0..N % 64 {
-            res[64 * j + t] = plaintext[64 * j + t] ^ key_stream_bytes[t];
+        let words_needed = (remaining_bytes + 3) / 4;
+        for w in 0..words_needed {
+            let idx = 16 * j + w;
+            res_words[idx] = plaintext_words[idx] ^ key_stream[w];
         }
+    }
+
+    let unpacked = unpack_u32_words_to_bytes(res_words);
+
+    // Copy only first N bytes
+    let mut res = [0 as u8; N];
+    for i in 0..N {
+        res[i] = unpacked[i];
     }
 
     res
