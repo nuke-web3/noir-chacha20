@@ -13,7 +13,7 @@ pub fn chacha20_block(key: [u32; 8], nonce: [u32; 3], counter: u32) -> [u32; 16]
     }
 
     state.add(working_state);
-    state.to_le_4bytes()
+    state.state
 }
 
 /// Structure that holds the chacha20 state
@@ -60,31 +60,6 @@ impl ChaChaState {
             res[i * 4 + 3] = ((self.state[i] & 0xFF000000) >> 24) as u8;
         }
 
-        res
-    }
-
-    /// Serializes the state as 4-byte little endian words
-    fn to_le_4bytes(self) -> [u32; 16] {
-        let mut res = [0; 16];
-        for i in 0..16 {
-            let val = self.state[i];
-
-            let byte0 = val & 0xFF;
-            let byte1 = (val >> 8) & 0xFF;
-            let byte2 = (val >> 16) & 0xFF;
-            let byte3 = (val >> 24) & 0xFF;
-
-            let part1 = byte0 << 24;
-            let part2 = byte1 << 16;
-            let part3 = byte2 << 8;
-            let part4 = byte3;
-
-            let sum1 = std::wrapping_add(part1, part2);
-            let sum2 = std::wrapping_add(sum1, part3);
-            let sum3 = std::wrapping_add(sum2, part4);
-
-            res[i] = sum3;
-        }
         res
     }
 
@@ -171,10 +146,10 @@ fn quarter_round(a: &mut u32, b: &mut u32, c: &mut u32, d: &mut u32) {
 ///
 /// Consider using `assert(n < 32);`
 fn left_rotation(x: &mut u32, n: u8) {
-    *x = ((*x << n) + (*x >> (32 - n)));
+    *x = (*x << n) + (*x >> (32 - n));
 }
 
-// The test data of this function is from section 2.2.1 of RFC7539
+// The test data of this function is from section 2.1.1 of RFC7539
 #[test]
 fn test_quarter_round() {
     let mut a = 0x11111111 as u32;
@@ -184,10 +159,10 @@ fn test_quarter_round() {
 
     quarter_round(&mut a, &mut b, &mut c, &mut d);
 
-    assert(a == 0xea2a92f4);
-    assert(b == 0xcb1cf8ce);
-    assert(c == 0x4581472e);
-    assert(d == 0x5881c4bb);
+    assert(a == 0xea2a92f4, f"got {a}");
+    assert(b == 0xcb1cf8ce, f"got {b}");
+    assert(c == 0x4581472e, f"got {c}");
+    assert(d == 0x5881c4bb, f"got {d}");
 }
 
 // The test data of this function is from section 2.3.2 of RFC7539
@@ -207,12 +182,10 @@ fn test_block_function() {
     let result = chacha20_block(key, nonce, counter);
 
     let expected_result = [
-        0x10f1e7e4, 0xd13b5915, 0x500fdd1f, 0xa32071c4, 0xc7d1f4c7, 0x33c06803, 0x0422aa9a,
-        0xc3d46c4e, 0xd2826446, 0x079faa09, 0x14c2d705, 0xd98b02a2, 0xb5129cd1, 0xde164eb9,
-        0xcbd083e8, 0xa2503c4e,
+        0xe4e7f110, 0x15593bd1, 0x1fdd0f50, 0xc47120a3, 0xc7f4d1c7, 0x0368c033, 0x9aaa2204,
+        0x4e6cd4c3, 0x466482d2, 0x09aa9f07, 0x05d7c214, 0xa2028bd9, 0xd19c12b5, 0xb94e16de,
+        0xe883d0cb, 0x4e3c50a2,
     ];
 
-    for i in 0..16 {
-        assert(result[i] == expected_result[i]);
-    }
+    assert(result == expected_result, f"\n{result}\n == \n{expected_result}");
 }
